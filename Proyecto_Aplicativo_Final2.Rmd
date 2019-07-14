@@ -1,0 +1,2055 @@
+---
+title: "Proyecto Aplicativo"
+author: "Joel Visurraga 20185195, Piero Montoya 20144600"
+date: "11/07/2019"
+output: html_document
+html_document:
+    toc: true
+    toc_depth: 5
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+# Estadística para el análisis político 2 - POL304 <br> 
+ 
+____
+## **¿Obras de confianza?: Análisis de la relación público-privado a partir de las Obras por Impuestos (OxI)**
+____
+
+<a id='beginning'></a>
+
+I.  __Índice __
+
+    * [1.Carga de datos](#Apertura)
+    * [2.Limpieza de bases de datos](#Limpieza)
+    * [3.Aplicacion del merge](#Merge)
+    * [4.Descripcion de datos](#Descripcion)
+    * [5.Analisis Factorial y de Correlacion](#Factorial)
+    * [6.Mapa de Similitudes](#Similitudes) 
+    * [7.Analisis de cluster](#Cluster) 
+    * [8.Analisis de Regresion Lineal](#Regresion)
+    * [9.Requisitos de la Regresion Lineal](#Requisitos)
+
+
+<a id='Apertura'></a> 
+
+#### **1.Carga de datos**
+
+En esta parte presentamos las bases de datos originales que utilizaremos para la presente investigación.
+
+##### **VARIABLES DEPENDIENTES**
+
+##### **Data Obras por Impuestos (OxI) (VD: Número de OxI y Monto)**
+
+```{r}
+link1= "https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/OxI_Final.xlsx"
+
+library(openxlsx)
+
+OXI=read.xlsx(link1,
+                sheet = 1,
+                startRow = 2, 
+                skipEmptyRows = T, skipEmptyCols = T)
+str(OXI)
+```
+
+##### **VARIABLES INDEPENDIENTES**
+
+##### **Data Índice de Densidad del Estado (IDE) (VI:IDE obtenido del conjunto de subvariables presentadas a continuación)**
+
+- DATA DERECHOS PERSONALES
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+library(tidyverse)
+Derecho <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/folleto.pdf",pages = c(22), guess = FALSE)
+Derecho <- as.data.frame(Derecho)
+str(Derecho)
+```
+
+- DATA NUTRICIÓN Y CUIDADOS MÉDICOS BÁSICOS
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+NutriMedi <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/folleto.pdf",pages = c(14), guess = FALSE)
+NutriMedi <- as.data.frame(NutriMedi)
+str(NutriMedi)
+```
+
+- DATA VIVIENDA
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+Vivi <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/folleto.pdf",pages = c(16), guess = FALSE)
+Vivi <- as.data.frame(Vivi)
+Vivi <- Vivi[,c(1:3)]
+names(Vivi)=c("Departamento","Bye1","Bye2")
+str(Vivi)
+```
+
+- DATA ACCESO A CONOCIMIENTO BÁSICO
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+ACB <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/folleto.pdf",pages = c(18), guess = FALSE)
+ACB <- as.data.frame(ACB)
+str(ACB)
+```
+
+- DATA INFORMACIÓN Y TELECOMUNICACIONES
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+InfoTelecom <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/folleto.pdf",pages = c(19), guess = FALSE)
+InfoTelecom <- as.data.frame(InfoTelecom)
+str(InfoTelecom)
+```
+
+- DATA EDUCACIÓN SUPERIOR
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+EduSuper <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/folleto.pdf",pages = c(25), guess = FALSE)
+EduSuper <- as.data.frame(EduSuper)
+EduSuper <- EduSuper[,c(1:2)]
+names(EduSuper)=c("Departamento","Bye1")
+str(EduSuper)
+```
+
+##### **Data Índice de Desarrollo Humano (IDH) (VI: IDH obtenido del conjunto de subvariables encontradas en la presente data)**
+
+```{r}
+link2= "https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/provinciasPeru.xlsx"
+
+library(openxlsx)
+
+IDH=read.xlsx(link2,
+                sheet = 1,
+                startRow = 1, 
+                skipEmptyRows = T, skipEmptyCols = T)
+str(IDH)
+```
+
+##### **Data Corrupción (VI: Número de procesados por corrupción)**
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+Corrup <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/LA-CORRUPCI%C3%93N-EN-GOBIERNOS-REGIONALES-Y-LOCALES.pdf",pages = c(13), guess = FALSE)
+Corrup <- as.data.frame(Corrup)
+str(Corrup)
+```
+
+##### **Data Conflictos Sociales (VI: Nro de Conflictos Sociales)**
+
+```{r}
+library(tabulizer)
+library(tabulizerjars)
+Conflicto <- extract_tables("https://github.com/Andrevro/Datas-Proyecto-Aplicativo/raw/master/Conflictos-Sociales-N%C2%B0-181-Marzo-2019.pdf",pages = c(13), guess = FALSE)
+Conflicto <- as.data.frame(Conflicto)
+str(Conflicto)
+```
+
+
+<a id='Limpieza'></a> 
+
+#### **2.Limpieza de la base de datos**
+
+En esta sección desarrollaremos la limpieza de las bases de datos originales con el fin de mantener solo la información que se necesita.
+
+##### **VARIABLES DEPENDIENTES**
+
+##### **Data Obras por Impuestos (OxI) (VD: Número de OxI y Monto)**
+
+Eliminamos columnas y filas innecesarias
+```{r}
+OXI=OXI[,-c(1:5,5,7:14,16:43)]
+OXI=OXI[-c(373:375),]
+rownames(OXI) = NULL
+```
+
+Cambiamos nombres
+```{r}
+names(OXI) <- c("Departamento","Monto")
+OXI <- OXI[!is.na(OXI$Monto),]
+library(dplyr)
+OXI = arrange(OXI, Departamento) # Orden directo
+```
+
+Sacamos tabla para ver el número de obras que hay en cada departamento
+```{r}
+table(OXI$Departamento)
+```
+
+Sumamos montos por Departamento
+```{r}
+Ancash =sum(OXI[grep("Ancash|Áncash",OXI$Departamento),2])
+
+Arequipa =sum(OXI[grep("Arequipa",OXI$Departamento),2])
+
+Ayacucho =sum(OXI[grep("Ayacucho",OXI$Departamento),2])
+
+Cajamarca =sum(OXI[grep("Cajamarca",OXI$Departamento),2])
+
+Callao =sum(OXI[grep("Callao",OXI$Departamento),2])
+
+Cusco =sum(OXI[grep("Cusco",OXI$Departamento),2])
+
+Huancavelica =sum(OXI[grep("Huancavelica",OXI$Departamento),2])
+
+Huanuco =sum(OXI[grep("Huanuco",OXI$Departamento),2])
+
+Ica =sum(OXI[grep("Ica",OXI$Departamento),2])
+
+Junin =sum(OXI[grep("Junín",OXI$Departamento),2])
+
+LaLibertad=sum(OXI[grep("La Libertad",OXI$Departamento),2])
+
+Lambayeque =sum(OXI[grep("Lambayeque",OXI$Departamento),2])
+
+Lima =sum(OXI[grep("Lima|Lima Metropolitana",OXI$Departamento),2])
+
+Loreto =sum(OXI[grep("Loreto",OXI$Departamento),2])
+
+Moquegua =sum(OXI[grep("Moquegua",OXI$Departamento),2])
+
+Pasco =sum(OXI[grep("Pasco",OXI$Departamento),2])
+
+Piura =sum(OXI[grep("Piura",OXI$Departamento),2])
+
+Puno =sum(OXI[grep("Puno",OXI$Departamento),2])
+
+Tacna =sum(OXI[grep("Tacna",OXI$Departamento),2])
+
+Tumbes=sum(OXI[grep("Tumbes|Tumbes ",OXI$Departamento),2])
+
+Ucayali =sum(OXI[grep("Ucayali",OXI$Departamento),2])
+```
+
+Creamos nueva data Frame teniendo en cuenta el Número de OxI y el Monto de las OxI por departamento
+```{r}
+OXI= data.frame(list(Departamento=c("Ancash","Arequipa","Ayacucho","Cajamarca","Callao","Cusco","Huancavelica","Huanuco","Ica","Junin","La Libertad","Lambayeque","Lima","Loreto","Moquegua","Pasco", "Piura","Puno","Tacna","Tumbes","Ucayali", "San Martin","Amazonas","Madre de Dios","Apurimac"),
+                    Monto=c(Ancash,Arequipa,Ayacucho,Cajamarca,Callao,Cusco,Huancavelica,Huanuco,Ica,Junin,LaLibertad,Lambayeque,Lima,Loreto,Moquegua,Pasco,Piura,Puno,Tacna,Tumbes,Ucayali,0,0,0,0), NObras= c(49,45,1,20,7,40,7,1,30,11,30,1,27,12,10,17,36,4,18,2,4,0,0,0,0)))
+
+```
+
+Se convierte a caracter los elementos de la columna departamento
+```{r}
+OXI$Departamento <- as.character(OXI$Departamento)
+```
+
+
+##### **VARIABLES INDEPENDIENTES**
+
+##### **Data Índice de Densidad del Estado (IDE) (VI:IDE obtenido del conjunto de subvariables presentadas a continuación)**
+
+- DATA DERECHOS PERSONALES
+
+Eliminamos columnas y filas innecesarias
+```{r}
+Derecho=Derecho[-c(1:3,22,31:47),]
+row.names(Derecho)=NULL
+Derecho <- as.data.frame(Derecho)
+Derecho
+```
+
+Cambiamos nombres
+```{r}
+Derecho <- Derecho[1]
+names(Derecho) <- "Departamento"
+```
+
+Convertimos a caracter la columna Departamento
+```{r}
+Derecho$Departamento <- as.character(Derecho$Departamento)
+str(Derecho)
+```
+
+Luego, Cambiamos los nombres para que no se dividan al momento de separar
+```{r}
+Derecho[13,1] = "Lima_Metropolitana 13 42.36 4 46.81"
+Derecho[5,1] = "Lima_Provincias 5 50.44 11 39.52"
+Derecho[6,1] = "La_Libertad 6 48.33 10 39.70"
+Derecho[8,1] = "San_Martín 8 44.31 15 38.12"
+Derecho[24,1] = "Madre_de_Dios 24 32.00 21 29.18 De 45 a 54 Bajo"
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+Derecho <- separate(Derecho, Departamento,
+                 into=c("Departamento",'Rank','IPS_Derecho','Bye1','Bye2'), " ")
+Derecho$Bye1=NULL
+Derecho$Bye2=NULL
+Derecho$Rank=NULL
+```
+
+Cambiamos nombres debido a la tilde
+```{r}
+Derecho$Departamento[13] = "Lima Metropolitana"
+Derecho$Departamento[5] = "Lima Provincias"
+Derecho$Departamento[6] = "La Libertad"
+Derecho$Departamento[8] = "San Martin"
+Derecho$Departamento[24] = "Madre de Dios"
+Derecho$Departamento[11] = "Ancash"
+Derecho$Departamento[19] = "Apurimac"
+Derecho$Departamento[20] = "Huanuco"
+Derecho$Departamento[23] = "Junin"
+```
+
+Convertimos a numérica la columna que representan el resultado de cada departamento
+```{r}
+Derecho$IPS_Derecho = as.numeric(Derecho$IPS_Derecho)
+mean(Derecho[c(5,13),2], na.rm = T)
+```
+
+Sacamos promedio de Lima provincias y Lima metropolitana
+```{r}
+Derecho=Derecho[-c(13),]
+Derecho$Departamento[5] = "Lima"
+Derecho$IPS_Derecho[5] = "46.4"
+rownames(Derecho)=NULL
+colnames(Derecho$IPS_Derecho)= NULL
+Derecho$IPS_Derecho = as.numeric(Derecho$IPS_Derecho)
+str(Derecho)
+```
+
+- DATA NUTRICIÓN Y CUIDADOS MÉDICOS BÁSICOS
+
+Eliminamos columnas y filas innecesarias
+```{r}
+NutriMedi=NutriMedi[-c(1:4,23,32:43),]
+row.names(NutriMedi)=NULL
+NutriMedi <- as.data.frame(NutriMedi)
+NutriMedi <- NutriMedi[1]
+names(NutriMedi) <- "Departamento"
+NutriMedi
+```
+
+Cambiamos los nombres para que no se dividan al momento de separar
+```{r}
+NutriMedi$Departamento <- as.character(NutriMedi$Departamento)
+str(NutriMedi)
+NutriMedi[1,1] = "Lima_Metropolitana 1 77.20 3 77.64"
+NutriMedi[5,1] = "Lima_Provincias 5 72.66 9 69.09"
+NutriMedi[7,1] = "La_Libertad 7 69.85 12 65.17"
+NutriMedi[15,1] = "San_Martín 15 60.93 21 51.21"
+NutriMedi[12,1] = "Madre_de_Dios 12 62.07 18 55.99"
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+NutriMedi <- separate(NutriMedi, Departamento,
+                 into=c("Departamento",'Rank','IPS_NutriMedi','Bye1','Bye2'), " ")
+NutriMedi$Bye1=NULL
+NutriMedi$Bye2=NULL
+NutriMedi$Rank=NULL
+```
+
+Cambiamos nombres
+```{r}
+NutriMedi$Departamento[1] = "Lima Metropolitana"
+NutriMedi$Departamento[5] = "Lima Provincias"
+NutriMedi$Departamento[7] = "La Libertad"
+NutriMedi$Departamento[15] = "San Martin"
+NutriMedi$Departamento[12] = "Madre de Dios"
+NutriMedi$Departamento[14] = "Ancash"
+NutriMedi$Departamento[18] = "Apurimac"
+NutriMedi$Departamento[17] = "Huanuco"
+NutriMedi$Departamento[19] = "Junin"
+```
+
+Sacamos promedio de Lima provincias y Lima metropolitana
+```{r}
+NutriMedi$IPS_NutriMedi = as.numeric(NutriMedi$IPS_NutriMedi)
+mean(NutriMedi[c(1,5),2], na.rm = T)
+NutriMedi=NutriMedi[-c(5),]
+NutriMedi$Departamento[1] = "Lima"
+NutriMedi$IPS_NutriMedi[1] = "74.93"
+rownames(NutriMedi)=NULL
+colnames(NutriMedi$IPS_NutriMedi)= NULL
+NutriMedi$IPS_NutriMedi = as.numeric(NutriMedi$IPS_NutriMedi)
+str(NutriMedi)
+```
+
+- DATA VIVIENDA
+
+Eliminamos columnas y filas innecesarias
+```{r}
+Vivi=Vivi[-c(1:3,22,31:44),]
+Vivi$Bye1=NULL
+Vivi$Bye2=NULL
+row.names(Vivi)=NULL
+Vivi
+```
+
+Luego, Cambiamos los nombres para que no se dividan al momento de separar
+```{r}
+Vivi$Departamento <- as.character(Vivi$Departamento)
+str(Vivi)
+Vivi[1,1] = "Lima_Metropolitana 1 96.54 1 97.30"
+Vivi[3,1] = "Lima_Provincias 3 95.20 9 84.45"
+Vivi[11,1] = "La_Libertad 11 83.64 11 81.12"
+Vivi[13,1] = "San_Martín 13 79.49 14 77.27"
+Vivi[15,1] = "Madre_de_Dios 15 77.65 15 76.74"
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+Vivi <- separate(Vivi, Departamento,
+                 into=c("Departamento",'Rank','IPS_Vivi','Bye1','Bye2'), " ")
+Vivi$Bye1=NULL
+Vivi$Bye2=NULL
+Vivi$Rank=NULL
+```
+
+Cambiamos nombres
+```{r}
+Vivi$Departamento[1] = "Lima Metropolitana"
+Vivi$Departamento[3] = "Lima Provincias"
+Vivi$Departamento[11] = "La Libertad"
+Vivi$Departamento[13] = "San Martin"
+Vivi$Departamento[15] = "Madre de Dios"
+Vivi$Departamento[12] = "Ancash"
+Vivi$Departamento[19] = "Apurimac"
+Vivi$Departamento[21] = "Huanuco"
+Vivi$Departamento[14] = "Junin"
+```
+
+Sacamos promedio de Lima provincias y Lima metropolitana
+```{r}
+Vivi$IPS_Vivi = as.numeric(Vivi$IPS_Vivi)
+mean(Vivi[c(1,3),2], na.rm = T)
+Vivi=Vivi[-c(3),]
+Vivi$Departamento[1] = "Lima"
+Vivi$IPS_Vivi[1] = "95.87"
+rownames(Vivi)=NULL
+colnames(Vivi$IPS_Vivi)= NULL
+Vivi$IPS_Vivi = as.numeric(Vivi$IPS_Vivi)
+str(Vivi)
+```
+
+- DATA ACCESO A CONOCIMIENTO BÁSICO
+
+Eliminamos columnas y filas innecesarias
+```{r}
+ACB=ACB[-c(1:3,22,31:50),]
+row.names(ACB)=NULL
+ACB <- as.data.frame(ACB)
+ACB
+```
+
+Cambiamos nombres
+```{r}
+ACB <- ACB[1]
+names(ACB) <- "Departamento"
+```
+
+Convertimos a caracter la columna Departamento
+```{r}
+ACB$Departamento <- as.character(ACB$Departamento)
+str(ACB)
+```
+
+Luego, Cambiamos los nombres para que no se dividan al momento de separar
+```{r}
+ACB[5,1] = "Lima_Metropolitana 5 75.14 6 73.90"
+ACB[8,1] = "Lima_Provincias 8 72.76 9 70.02"
+ACB[17,1] = "La_Libertad 17 67.51 10 67.73"
+ACB[19,1] = "San_Martín 19 65.73 17 65.62 Progreso Social"
+ACB[6,1] = "Madre_de_Dios 6 74.86 12 67.45"
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+ACB <- separate(ACB, Departamento,
+                 into=c("Departamento",'Rank','IPS_ACB','Bye1','Bye2'), " ")
+ACB$Bye1=NULL
+ACB$Bye2=NULL
+ACB$Rank=NULL
+```
+
+Cambiamos nombres
+```{r}
+ACB$Departamento[5] = "Lima Metropolitana"
+ACB$Departamento[8] = "Lima Provincias"
+ACB$Departamento[17] = "La Libertad"
+ACB$Departamento[19] = "San Martin"
+ACB$Departamento[6] = "Madre de Dios"
+ACB$Departamento[16] = "Ancash"
+ACB$Departamento[22] = "Apurimac"
+ACB$Departamento[25] = "Huanuco"
+ACB$Departamento[11] = "Junin"
+```
+
+Sacamos promedio de Lima provincias y Lima metropolitana
+```{r}
+ACB$IPS_ACB = as.numeric(ACB$IPS_ACB)
+mean(ACB[c(5,8),2], na.rm = T)
+```
+Ponemos la media de Lima Provincias y Lima Metropolitana
+```{r}
+ACB=ACB[-c(8),]
+ACB$Departamento[5] = "Lima"
+ACB$IPS_ACB[5] = "73.95"
+rownames(ACB)=NULL
+colnames(ACB$IPS_ACB)= NULL
+ACB$IPS_ACB = as.numeric(ACB$IPS_ACB)
+str(ACB)
+```
+
+- DATA INFORMACIÓN Y TELECOMUNICACIONES
+
+Eliminamos columnas y filas innecesarias
+```{r}
+InfoTelecom=InfoTelecom[-c(1:3,22,31:44),]
+row.names(InfoTelecom)=NULL
+InfoTelecom <- as.data.frame(InfoTelecom)
+InfoTelecom
+```
+
+Cambiamos nombres
+```{r}
+InfoTelecom <- InfoTelecom[1]
+names(InfoTelecom) <- "Departamento"
+```
+
+Convertimos a caracter la columna Departamento
+```{r}
+InfoTelecom$Departamento <- as.character(InfoTelecom$Departamento)
+str(InfoTelecom)
+```
+
+Luego, Cambiamos los nombres para que no se dividan al momento de separar
+```{r}
+InfoTelecom[2,1] = "Lima_Metropolitana 2 60.95 1 72.49"
+InfoTelecom[1,1] = "Lima_Provincias 1 66.06 14 42.02"
+InfoTelecom[9,1] = "La_Libertad 9 50.66 10 44.76"
+InfoTelecom[20,1] = "San_Martín 20 38.33 18 36.50 De 85 a 100 Muy Alto"
+InfoTelecom[13,1] = "Madre_de_Dios 13 44.74 13 42.18"
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+InfoTelecom <- separate(InfoTelecom, Departamento,
+                 into=c("Departamento",'Rank','IPS_InfoTelecom','Bye1','Bye2'), " ")
+InfoTelecom$Bye1=NULL
+InfoTelecom$Bye2=NULL
+InfoTelecom$Rank=NULL
+```
+
+Cambiamos nombres
+```{r}
+InfoTelecom$Departamento[1] = "Lima Metropolitana"
+InfoTelecom$Departamento[2] = "Lima Provincias"
+InfoTelecom$Departamento[9] = "La Libertad"
+InfoTelecom$Departamento[20] = "San Martin"
+InfoTelecom$Departamento[13] = "Madre de Dios"
+InfoTelecom$Departamento[11] = "Ancash"
+InfoTelecom$Departamento[23] = "Apurimac"
+InfoTelecom$Departamento[16] = "Huanuco"
+InfoTelecom$Departamento[14] = "Junin"
+```
+
+Sacamos promedio de Lima provincias y Lima metropolitana
+```{r}
+InfoTelecom$IPS_InfoTelecom = as.numeric(InfoTelecom$IPS_InfoTelecom)
+mean(InfoTelecom[c(1,2),2], na.rm = T)
+```
+
+Ponemos la media de Lima Provincias y Lima Metropolitana
+```{r}
+InfoTelecom=InfoTelecom[-c(2),]
+InfoTelecom$Departamento[1] = "Lima"
+InfoTelecom$IPS_InfoTelecom[1] = "63.51"
+rownames(InfoTelecom)=NULL
+colnames(InfoTelecom$IPS_InfoTelecom)= NULL
+InfoTelecom$IPS_InfoTelecom = as.numeric(InfoTelecom$IPS_InfoTelecom)
+str(InfoTelecom)
+```
+
+- DATA EDUCACIÓN SUPERIOR
+
+Eliminamos columnas y filas innecesarias
+```{r}
+EduSuper <- EduSuper[-c(1:3,22,31:51),]
+row.names(EduSuper)=NULL
+EduSuper
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+EduSuper <- separate(EduSuper, Bye1,
+                 into=c("Rank",'IPS_EduSuper','Bye1','Bye2'), " ")
+
+EduSuper$Bye1=NULL
+EduSuper$Bye2=NULL
+EduSuper$Rank=NULL
+```
+
+Sacamos promedio de Lima provincias y Lima metropolitana
+```{r}
+EduSuper$Departamento <- as.character(EduSuper$Departamento)
+EduSuper$IPS_EduSuper <- as.numeric(EduSuper$IPS_EduSuper)
+mean(EduSuper[c(3,7),2], na.rm = T)
+```
+
+Cambiamos nombres
+```{r}
+EduSuper$Departamento[22] = "San Martin"
+EduSuper$Departamento[9] = "Ancash"
+EduSuper$Departamento[6] = "Apurimac"
+EduSuper$Departamento[25] = "Huanuco"
+EduSuper$Departamento[10] = "Junin"
+```
+
+Ponemos la media de Lima Provincias y Lima Metropolitana
+```{r}
+EduSuper=EduSuper[-c(7),]
+EduSuper$Departamento[3] = "Lima"
+EduSuper$IPS_EduSuper[3] = "63.24"
+rownames(EduSuper)=NULL
+EduSuper$IPS_EduSuper = as.numeric(EduSuper$IPS_EduSuper)
+str(EduSuper)
+```
+
+
+##### **Data Índice de Desarrollo Humano (IDH) (VI: IDH obtenido del conjunto de subvariables encontradas en la presente data)**
+
+Eliminamos columnas y filas innecesarias
+```{r}
+IDH=IDH[,-c(1:3,5,6:9,14:39)]
+rownames(IDH) = NULL
+names(IDH) <- c("Departamento","Esperanza", "Secu","Educa","PBI")
+IDH <- arrange(IDH, Departamento) # Orden directo
+```
+
+Empezamos a sacar promedios por Departamento y por columnas
+```{r}
+##Amazonas
+mean(IDH[c(1:7),c(2)])
+mean(IDH[c(1:7),c(3)])
+mean(IDH[c(1:7),c(4)])
+mean(IDH[c(1:7),c(5)])
+```
+```{r}
+IDH=IDH[-c(2:9),]
+IDH[1,2] = "72.44"
+IDH[1,3]  = "31.13"
+IDH[1,4]  = "6.01"
+IDH[1,5]  = "265.20"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Ancash
+mean(IDH[c(2:19),c(2)])
+mean(IDH[c(2:19),c(3)])
+mean(IDH[c(2:19),c(4)])
+mean(IDH[c(2:19),c(5)])
+```
+```{r}
+IDH=IDH[-c(3:19),]
+IDH[2,2] = "71.29"
+IDH[2,3]  = "43.37"
+IDH[2,4]  = "6.42"
+IDH[2,5]  = "237.49"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Apurimac
+mean(IDH[c(3:9),c(2)])
+mean(IDH[c(3:9),c(3)])
+mean(IDH[c(3:9),c(4)])
+mean(IDH[c(3:9),c(5)])
+```
+```{r}
+IDH=IDH[-c(4:9),]
+IDH[3,2] = "70.78"
+IDH[3,3]  = "43.55"
+IDH[3,4]  = "5.65"
+IDH[3,5]  = "181.54"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Arequipa
+mean(IDH[c(4:11),c(2)])
+mean(IDH[c(4:11),c(3)])
+mean(IDH[c(4:11),c(4)])
+mean(IDH[c(4:11),c(5)])
+```
+```{r}
+IDH=IDH[-c(5:11),]
+IDH[4,2] = "72.79"
+IDH[4,3]  = "65.15"
+IDH[4,4]  = "8.68"
+IDH[4,5]  = "333.35"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Ayacucho
+mean(IDH[c(5:15),c(2)])
+mean(IDH[c(5:15),c(3)])
+mean(IDH[c(5:15),c(4)])
+mean(IDH[c(5:15),c(5)])
+```
+```{r}
+IDH=IDH[-c(6:15),]
+IDH[5,2] = "70.85"
+IDH[5,3]  = "38.92"
+IDH[5,4]  = "5.81"
+IDH[5,5]  = "179.38"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Cajamarca
+mean(IDH[c(6:18),c(2)])
+mean(IDH[c(6:18),c(3)])
+mean(IDH[c(6:18),c(4)])
+mean(IDH[c(6:18),c(5)])
+```
+```{r}
+IDH=IDH[-c(7:18),]
+IDH[6,2] = "71.78"
+IDH[6,3]  = "33.56"
+IDH[6,4]  = "5.21"
+IDH[6,5]  = "197.55"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+
+```{r}
+##Cusco
+mean(IDH[c(8:20),c(2)])
+mean(IDH[c(8:20),c(3)])
+mean(IDH[c(8:20),c(4)])
+mean(IDH[c(8:20),c(5)])
+```
+```{r}
+IDH=IDH[-c(9:20),]
+IDH[8,2] = "69.89"
+IDH[8,3]  = "43.71"
+IDH[8,4]  = "5.85"
+IDH[8,5]  = "195.92"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Huancavelica
+mean(IDH[c(9:15),c(2)])
+mean(IDH[c(9:15),c(3)])
+mean(IDH[c(9:15),c(4)])
+mean(IDH[c(9:15),c(5)])
+```
+```{r}
+IDH=IDH[-c(10:15),]
+IDH[9,2] = "70.39"
+IDH[9,3]  = "39.72"
+IDH[9,4]  = "5.53"
+IDH[9,5]  = "127.79"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Huanuco
+mean(IDH[c(10:20),c(2)])
+mean(IDH[c(10:20),c(3)])
+mean(IDH[c(10:20),c(4)])
+mean(IDH[c(10:20),c(5)])
+```
+```{r}
+IDH=IDH[-c(11:20),]
+IDH[10,2] = "70.91"
+IDH[10,3]  = "29.69"
+IDH[10,4]  = "5.23"
+IDH[10,5]  = "192.99"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+
+```{r}
+##Ica
+mean(IDH[c(11:15),c(2)])
+mean(IDH[c(11:15),c(3)])
+mean(IDH[c(11:15),c(4)])
+mean(IDH[c(11:15),c(5)])
+```
+```{r}
+IDH=IDH[-c(12:15),]
+IDH[11,2] = "76.01"
+IDH[11,3]  = "72.04"
+IDH[11,4]  = "9.75"
+IDH[11,5]  = "359.14"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Junin
+mean(IDH[c(12:20),c(2)])
+mean(IDH[c(12:20),c(3)])
+mean(IDH[c(12:20),c(4)])
+mean(IDH[c(12:20),c(5)])
+```
+```{r}
+IDH=IDH[-c(13:20),]
+IDH[12,2] = "71.50"
+IDH[12,3]  = "61.89"
+IDH[12,4]  = "8.04"
+IDH[12,5]  = "263.30"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##La Libertad
+mean(IDH[c(13:24),c(2)])
+mean(IDH[c(13:24),c(3)])
+mean(IDH[c(13:24),c(4)])
+mean(IDH[c(13:24),c(5)])
+```
+```{r}
+IDH=IDH[-c(14:24),]
+IDH[13,2] = "72.88"
+IDH[13,3]  = "41.44"
+IDH[13,4]  = "6.51"
+IDH[13,5]  = "255.98"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Lambayeque
+mean(IDH[c(14:16),c(2)])
+mean(IDH[c(14:16),c(3)])
+mean(IDH[c(14:16),c(4)])
+mean(IDH[c(14:16),c(5)])
+```
+```{r}
+IDH=IDH[-c(15:16),]
+IDH[14,2] = "72.12"
+IDH[14,3]  = "55.77"
+IDH[14,4]  = "7.88"
+IDH[14,5]  = "273.59"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Lima
+mean(IDH[c(15:24),c(2)])
+mean(IDH[c(15:24),c(3)])
+mean(IDH[c(15:24),c(4)])
+mean(IDH[c(15:24),c(5)])
+```
+```{r}
+IDH=IDH[-c(16:24),]
+IDH[15,2] = "73.69"
+IDH[15,3]  = "60.97"
+IDH[15,4]  = "8.83"
+IDH[15,5]  = "318.27"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Loreto
+mean(IDH[c(16:23),c(2)])
+mean(IDH[c(16:23),c(3)])
+mean(IDH[c(16:23),c(4)])
+mean(IDH[c(16:23),c(5)])
+```
+```{r}
+IDH=IDH[-c(17:23),]
+IDH[16,2] = "69.78"
+IDH[16,3]  = "34.65"
+IDH[16,4]  = "7.14"
+IDH[16,5]  = "231.32"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Madre de Dios
+mean(IDH[c(17:19),c(2)])
+mean(IDH[c(17:19),c(3)])
+mean(IDH[c(17:19),c(4)])
+mean(IDH[c(17:19),c(5)])
+```
+```{r}
+IDH=IDH[-c(18:19),]
+IDH[17,2] = "73.04"
+IDH[17,3]  = "57.81"
+IDH[17,4]  = "9.22"
+IDH[17,5]  = "402.40"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+
+```{r}
+##Moquegua
+mean(IDH[c(18:20),c(2)])
+mean(IDH[c(18:20),c(3)])
+mean(IDH[c(18:20),c(4)])
+mean(IDH[c(18:20),c(5)])
+```
+```{r}
+IDH=IDH[-c(19:20),]
+IDH[18,2] = "75.19"
+IDH[18,3]  = "79.36"
+IDH[18,4]  = "9.77"
+IDH[18,5]  = "376.02"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Pasco
+mean(IDH[c(19:21),c(2)])
+mean(IDH[c(19:21),c(3)])
+mean(IDH[c(19:21),c(4)])
+mean(IDH[c(19:21),c(5)])
+```
+```{r}
+IDH=IDH[-c(20:21),]
+IDH[19,2] = "71.46"
+IDH[19,3]  = "61.39"
+IDH[19,4]  = "7.72"
+IDH[19,5]  = "206.05"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+
+```{r}
+##Piura
+mean(IDH[c(20:27),c(2)])
+mean(IDH[c(20:27),c(3)])
+mean(IDH[c(20:27),c(4)])
+mean(IDH[c(20:27),c(5)])
+```
+```{r}
+IDH=IDH[-c(21:27),]
+IDH[20,2] = "71.31"
+IDH[20,3]  = "50.71"
+IDH[20,4]  = "7.03"
+IDH[20,5]  = "293.41"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Puno
+mean(IDH[c(21:33),c(2)])
+mean(IDH[c(21:33),c(3)])
+mean(IDH[c(21:33),c(4)])
+mean(IDH[c(21:33),c(5)])
+```
+```{r}
+IDH=IDH[-c(22:33),]
+IDH[21,2] = "68.64"
+IDH[21,3]  = "60.83"
+IDH[21,4]  = "6.33"
+IDH[21,5]  = "183.21"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##San Martin
+mean(IDH[c(22:31),c(2)])
+mean(IDH[c(22:31),c(3)])
+mean(IDH[c(22:31),c(4)])
+mean(IDH[c(22:31),c(5)])
+```
+```{r}
+IDH=IDH[-c(23:31),]
+IDH[22,2] = "72.32"
+IDH[22,3]  = "37.78"
+IDH[22,4]  = "6.70"
+IDH[22,5]  = "238.23"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Tacna
+mean(IDH[c(23:26),c(2)])
+mean(IDH[c(23:26),c(3)])
+mean(IDH[c(23:26),c(4)])
+mean(IDH[c(23:26),c(5)])
+```
+```{r}
+IDH=IDH[-c(24:26),]
+IDH[23,2] = "72.60"
+IDH[23,3]  = "72.26"
+IDH[23,4]  = "8.87"
+IDH[23,5]  = "300.67"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+##Tumbes
+mean(IDH[c(24:26),c(2)])
+mean(IDH[c(24:26),c(3)])
+mean(IDH[c(24:26),c(4)])
+mean(IDH[c(24:26),c(5)])
+```
+```{r}
+IDH=IDH[-c(25:26),]
+IDH[24,2] = "75.07"
+IDH[24,3]  = "57.60"
+IDH[24,4]  = "8.57"
+IDH[24,5]  = "397.50"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+
+```{r}
+##Ucayali
+mean(IDH[c(25:28),c(2)])
+mean(IDH[c(25:28),c(3)])
+mean(IDH[c(25:28),c(4)])
+mean(IDH[c(25:28),c(5)])
+```
+```{r}
+IDH=IDH[-c(26:28),]
+IDH[25,2] = "70.40"
+IDH[25,3]  = "37.68"
+IDH[25,4]  = "7.19"
+IDH[25,5]  = "253.15"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+```{r}
+## Callao
+IDH[7,3]  = "75.29"
+IDH[7,4]  = "10.37"
+IDH[7,5]  = "515.04"
+IDH$Esperanza = as.numeric(IDH$Esperanza)
+IDH$Secu = as.numeric(IDH$Secu)
+IDH$Educa = as.numeric(IDH$Educa)
+IDH$PBI = as.numeric(IDH$PBI)
+rownames(IDH) = NULL
+```
+
+Observamos la columna Departamento
+```{r}
+IDH$Departamento
+```
+
+Cambiamos nombres que estaban con mayúscula
+```{r}
+IDH[1,1]="Amazonas"
+IDH[2,1]="Ancash" 
+IDH[3,1]="Apurimac" 
+IDH[4,1]="Arequipa" 
+IDH[5,1]="Ayacucho"
+IDH[6,1]="Cajamarca"
+IDH[7,1]="Callao"
+IDH[8,1]="Cusco"
+IDH[9,1]="Huancavelica"
+IDH[10,1]="Huanuco"
+IDH[11,1]="Ica"
+IDH[12,1]="Junin"
+IDH[13,1]="La Libertad"
+IDH[14,1]="Lambayeque"
+IDH[15,1]="Lima"
+IDH[16,1]="Loreto"
+IDH[17,1]="Madre de Dios"
+IDH[18,1]="Moquegua"
+IDH[19,1]="Pasco"
+IDH[20,1]="Piura"
+IDH[21,1]="Puno"
+IDH[22,1]="San Martin"
+IDH[23,1]="Tacna"
+IDH[24,1]="Tumbes"
+IDH[25,1]="Ucayali"
+```
+
+
+##### **Data Corrupción (VI: Número de procesados por corrupción)**
+
+Eliminamos columnas y filas innecesarias
+```{r}
+Corrup=Corrup[-c(1:9,35:41),]
+row.names(Corrup)=NULL
+Corrup <- as.data.frame(Corrup)
+Corrup
+```
+
+Cambiamos nombres
+```{r}
+Corrup <- Corrup[1]
+names(Corrup) <- "Departamento"
+```
+
+Convertimos a caracter la columna Departamento
+```{r}
+Corrup$Departamento <- as.character(Corrup$Departamento)
+str(Corrup)
+```
+
+Luego, Cambiamos los nombres para que no se dividan al momento de separar
+```{r}
+Corrup[15,1] = "LA_LIBERTAD 2 10 49 61"
+Corrup[7,1] = "SAN_MARTIN 22 0 79 101"
+Corrup[23,1] = "MADRE_DE_DIOS 3 7 21 31"
+Corrup[6,1] = "CAJAMARCA 2 18 97 117"
+
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+Corrup <- separate(Corrup, Departamento,
+                 into=c("Departamento",'Bye1','Bye2','Bye3','NProcesados'), " ")
+Corrup$Bye1=NULL
+Corrup$Bye2=NULL
+Corrup$Bye3=NULL
+```
+
+Cambiamos nombres
+```{r}
+Corrup[1,1]="Cusco"
+Corrup[2,1]="Lima" 
+Corrup[3,1]="Junin" 
+Corrup[4,1]="Arequipa" 
+Corrup[5,1]="Ancash"
+Corrup[6,1]="Cajamarca"
+Corrup[7,1]="San Martin"
+Corrup[8,1]="Amazonas"
+Corrup[9,1]="Ica"
+Corrup[10,1]="Piura"
+Corrup[11,1]="Huancavelica"
+Corrup[12,1]="Apurimac"
+Corrup[13,1]="Lambayeque"
+Corrup[14,1]="Huanuco"
+Corrup[15,1]="La Libertad"
+Corrup[16,1]="Puno"
+Corrup[17,1]="Ayacucho"
+Corrup[18,1]="Pasco"
+Corrup[19,1]="Tacna"
+Corrup[20,1]="Ucayali"
+Corrup[21,1]="Tumbes"
+Corrup[22,1]="Loreto"
+Corrup[23,1]="Madre de Dios"
+Corrup[24,1]="Moquegua"
+Corrup[25,1]="Callao"
+```
+
+Convertimos a numérica la columna que representan el número de procesados por departamento
+```{r}
+Corrup$NProcesados = as.numeric(Corrup$NProcesados)
+```
+
+
+##### **Data Conflictos Sociales (VI: Nro de Conflictos Sociales)**
+
+Eliminamos columnas y filas innecesarias
+```{r}
+Conflicto=Conflicto[-c(1:10,39:45),]
+row.names(Conflicto)=NULL
+Conflicto <- as.data.frame(Conflicto)
+Conflicto
+```
+
+Cambiamos nombres
+```{r}
+Conflicto <- Conflicto[1]
+names(Conflicto) <- "Departamento"
+```
+
+Convertimos a caracter la columna Departamento
+```{r}
+Conflicto$Departamento <- as.character(Conflicto$Departamento)
+str(Conflicto)
+```
+
+Luego, Cambiamos los nombres para que no se dividan al momento de separar
+```{r}
+Conflicto[13,1] = "Lima_Provincias 6 3.3% 3 3"
+Conflicto[20,1] = "Lima_Metropolitana 3 1.6% 1 2"
+Conflicto[19,1] = "La_Libertad 3 1.6% 3 0"
+Conflicto[15,1] = "San_Martín 6 3.3% 3 3"
+Conflicto[23,1] = "Madre_de_Dios 1 0.5% 0 1"
+```
+
+Separamos en columnas para quedarnos con las que se necesitan y eliminamos las que son innecesarias
+```{r}
+library(tidyr)
+Conflicto <- separate(Conflicto, Departamento,
+                 into=c("Departamento",'NConflictos','Bye1','Bye2','Bye3'), " ")
+Conflicto$Bye1=NULL
+Conflicto$Bye2=NULL
+Conflicto$Bye3=NULL
+```
+
+Cambiamos nombres
+```{r}
+Conflicto$Departamento[20] = "Lima Metropolitana"
+Conflicto$Departamento[13] = "Lima Provincias"
+Conflicto$Departamento[19] = "La Libertad"
+Conflicto$Departamento[15] = "San Martin"
+Conflicto$Departamento[23] = "Madre de Dios"
+Conflicto$Departamento[1] = "Ancash"
+Conflicto$Departamento[7] = "Apurimac"
+Conflicto$Departamento[18] = "Huanuco"
+Conflicto$Departamento[9] = "Junin"
+
+```
+
+Convertimos a numérica la columna que representan el número de conflictos sociales
+```{r}
+Conflicto$NConflictos = as.numeric(Conflicto$NConflictos)
+```
+
+Eliminamos columnas y filas innecesarias
+```{r}
+Conflicto=Conflicto[-c(10,21),]
+row.names(Conflicto)=NULL
+```
+
+Sacamos promedio de Lima provincias y Lima metropolitana
+```{r}
+Conflicto=Conflicto[-c(19),]
+Conflicto$Departamento[12] = "Lima"
+Conflicto$NConflictos[12] = "9"
+rownames(Conflicto)=NULL
+colnames(Conflicto$IPS_Conflicto)= NULL
+Conflicto$NConflictos = as.numeric(Conflicto$NConflictos)
+str(Conflicto)
+```
+
+Ordenamos nuestra data en relación con el Departamento
+```{r}
+Conflicto = arrange(Conflicto, Departamento) # Orden directo
+```
+
+
+<a id='Merge'></a> 
+
+#### **3.Aplicacion del merge**
+
+Ahora, aplicamos el Merge entre las subvariables que servirán para el índice de Densidad
+```{r}
+Total=merge(ACB,EduSuper, by="Departamento")
+```
+
+```{r}
+Total=merge(Total,InfoTelecom, by="Departamento")
+```
+
+```{r}
+Total=merge(Total,NutriMedi, by="Departamento")
+```
+
+```{r}
+Total=merge(Total,Vivi, by="Departamento")
+```
+
+```{r}
+Total=merge(Total,Derecho, by="Departamento")
+```
+
+Aplicamos el Merge entre las subvariables que servirán para el índice de Densidad y el Número de procesados por Corrupción (Total1)
+
+```{r}
+Total1=merge(Total,Corrup, by="Departamento")
+```
+
+Luego, aplicamos el Merge entre las subvariables que servirán para el índice de Densidad y el Número de procesados por Corrupción (Total1) y el Número de Conflictos Sociales = (Total2)
+
+```{r}
+Total2=merge(Total1,Conflicto, by="Departamento")
+```
+
+Subsecuentemente, aplicamos el Merge entre las subvariables que servirán para el índice de Densidad, el Número de procesados por Corrupción y el Número de Conflictos Sociales (Total2) = (Total3)
+
+```{r}
+Total3=merge(Total2,IDH, by="Departamento")
+```
+
+Por último, aplicamos el Merge entre el Total 3 y la data de Obras por Impuestos (número de OxI y Monto de OxI a nivel departamental) = Total 4
+
+```{r}
+Total4=merge(Total3,OXI, by="Departamento")
+```
+
+Observamos las primeras filas de la Data Final
+```{r}
+head(Total4)
+```
+
+<a id='Descripcion'></a> 
+
+####**4.Descripcion de datos**
+
+En esta parte revisaremos las características que poseen cada una de las variables y subvariables utilizadas en la presente investigación
+
+##### **VARIABLES DEPENDIENTES**
+
+##### **Data Obras por Impuestos (OxI) (VD: Número de OxI y Monto)**
+
+```{r}
+summary(OXI)
+```
+
+
+Histograma del Monto de OxI
+```{r}
+hist(OXI$Monto)
+```
+
+
+##### **VARIABLES INDEPENDIENTES**
+
+##### **Data Índice de Densidad del Estado (IDE) (VI:IDE obtenido del conjunto de subvariables presentadas a continuación)**
+
+- DATA DERECHOS PERSONALES
+
+```{r}
+summary(Derecho)
+```
+
+- DATA NUTRICIÓN Y CUIDADOS MÉDICOS BÁSICOS
+
+```{r}
+summary(NutriMedi)
+```
+
+- DATA VIVIENDA
+
+```{r}
+summary(Vivi)
+```
+
+- DATA ACCESO A CONOCIMIENTO BÁSICO
+
+```{r}
+summary(ACB)
+```
+
+- DATA INFORMACIÓN Y TELECOMUNICACIONES
+
+```{r}
+summary(InfoTelecom)
+```
+
+- DATA EDUCACIÓN SUPERIOR
+
+```{r}
+summary(EduSuper)
+```
+
+
+##### **Data Índice de Desarrollo Humano (IDH) (VI: IDH obtenido del conjunto de subvariables encontradas en la presente data)**
+
+```{r}
+summary(IDH)
+```
+
+
+##### **Data Corrupción (VI: Número de procesados por corrupción)**
+
+```{r}
+summary(Corrup)
+```
+
+##### **Data Conflictos Sociales (VI: Nro de Conflictos Sociales)**
+
+```{r}
+summary(Conflicto)
+```
+
+<a id='Factorial'></a> 
+
+#### **5.Analisis Factorial y de Correlacion**
+
+En esta sección observaremos si hay relación entre nuestras subvariables tanto de IDH como de IDE, ya que estas variables independientes son índices. Por eso, no incluimos ni las VDs ni las otras dos VIs.
+
+
+a. Creamos una copia de la data original para evitar problemas o confusiones. Asimismo, ponemos el país en el índice.
+```{r}
+Totaly = Total4
+row.names(Totaly)=Totaly$Departamento
+Totaly$Departamento=NULL
+```
+
+b. Estandarizamos nuestras variables, considerando solo las variables de nuestros índices.
+```{r}
+Analisis_1=as.data.frame(scale(Totaly[,-c(7,8,13,14)]))
+summary(Analisis_1) #la propiedad de las puntuaciones z es que su media es 0
+```
+
+c. Activamos el paquete a utilizar para el análisis:
+```{r}
+library(psych)
+```
+
+d. Sacamos la matriz correlación de los componentes estandarizados con el fin de ver si se relacionan las subvariables o no:
+```{r}
+Analisis_2 = cor(Analisis_1) 
+
+#vemos el resultado gráficamente:
+cor.plot(Analisis_2,
+         numbers=T, 
+         upper=FALSE, 
+         main = "Correlation", 
+         show.legend = FALSE) 
+```
+
+
+e. Vemos el KMO (medida de adecuación muestral)
+```{r}
+KMO(Analisis_1) ## mientras más cercano a uno, mejor.
+```
+
+Nos fijamos en el Overall MSA y observamos que tiene un valor de 0.8, un valor aceptable ya que se acerca al 1.
+Asimismo, al observar las subvariables, podemos identificar que el que puntúa más es Acceso a Conocimiento Básico (IPS_ACB, una subvariable de IDE), mientras el MSA menor es Secundaria (Secu, una subvariable de IDH).
+
+
+f. ¿Cuántos Índices deberíamos crear?
+```{r}
+fa.parallel(Analisis_2, fm="pa", fa="fa", main = "Scree Plot",n.obs = nrow(Analisis_1)) #cuantos indices deberia formar
+```
+En este caso, la correlación indica que deberíamos formar un factor; es decir, un índice. Esto se debe a que las subvariables de IDE e IDH pueden parecer parecidas, y más cuando buscamos la definición de Densidad del Estado y de Desarrollo Humano. Sin embargo, 
+
+Definición IDE: "Los desempeños o funcionamientos del Estado para garantizar la provisión de los requerimientos sociales y los servicios básicos, directa o indirectamente, a todos los sectores de la sociedad y en todos los lugares del Perú, de manera subsidiaria y redistributiva" (PCM, 2015)
+
+Definición IDH: "El IDH tiene cuatro componentes, a saber, la esperanza de vida al nacer, la tasa de alfabetización adulta, la tasa de matriculación combinada en educación primaria, secundaria y terciaria, y la renta real medida en términos de paridad de poder adquisitivo". (Griffin,2001)
+
+Esto demuestra que IDE se refiere más a la presencia estatal y a los servicios que provee el Estado, mientras el IDH se refiere más al desarrollo del capital humano en sí, ya sea con o sin presencia estatal.
+
+Por ello, decidimos crear dos índices para la presente investigación.
+
+g. Preparamos la data para crear dos índices:
+```{r}
+Analisis_2 <- fa(Analisis_1, #data estandarizada
+                     nfactors=2, #número de factores
+                     rotate="varimax") 
+
+```
+
+h. Sacamos Loadings para ver qué variable aporta poco a su índice.
+```{r}
+Analisis_2$loadings
+```
+Conforme a los resultados del loadings, se puede indicar que el MR1 es el IDE, debido a que las subvariables de IDE aportan más a ese índice, mientras que el MR2 sería el IDH, debido a que las subvariables de IDH aportan más a ese índice. 
+
+Además, en el caso del MR1 (IDE), observamos que ACB es el que aporta menos, aunque anteriormente en el KMO era el que puntuaban más. 
+
+Por otra parte, en el caso del MR2 (IDH), observamos que Secu es el que aporta meno al índice, y justamente Secu era el que puntuaba menos cuando se sacó el KMO.
+
+Por último, vemos el Cumulative Var y observamos que se ha podido recuperar el 79% (0.785) de la variabilidad que todas las variables representaban.
+
+
+i. Vemos los índices en el Diagrama
+```{r}
+fa.diagram(Analisis_2) 
+```
+Como lo mencionamoes anteriormente, MR1 sería el IDE y MR2 sería el IDH.
+
+
+j. Sacamos Communalities:
+```{r}
+# mientras mas grande mejor (lo que aporta)
+sort(Analisis_2$communalities)
+```
+Observamos que las subvariables se relacionan muy bien entre ellas, ya que no se encuentran en el rango de 0.0-0.4, lo cual se considera baja correlación.
+
+
+k. Sacamos Uniquenesses:
+```{r}
+# mientras mas grande peor (lo que mantiene)
+sort(Analisis_2$uniquenesses)
+```
+Observamos que Acceso a Conocimiento Básico (ACB) es el que tiene mayor puntaje, por lo que su relevancia en el modelo será más bajo que las demás subvariables. Asimismo, PBI es el que tiene más relevancia al tener el puntajer más bajo.
+
+
+l. Sacamos Complexity:
+```{r}
+# mientras más grande, menos cercano a los factores.
+sort(Analisis_2$complexity)
+```
+PBI es el que se encuentra más cercano a los factores debido a que es el resultado más bajo. Por otra parte, Secu es el que se encuentra más alejado a los factores debido a que su resultado esel más alto.
+
+
+m. Veamos los nuevos valores de nuestros índices
+```{r}
+head(Analisis_2$scores)
+```
+
+n. Guardamos nuestros nuevos índices en un data frame
+```{r}
+scores=as.data.frame(Analisis_2$scores)
+names(scores)=c("IDEFA","IDHFA") #le ponemos nombre a nuestros indices
+```
+
+o. Juntamos nuestros nuevos índices con nuestra data original. El by=0 indica que estamos utilizando el índice y no una variable de la data.
+```{r}
+Totaly=merge(Totaly,scores,by=0)
+head(Totaly)#resultado
+```
+
+```{r}
+row.names(Totaly)=Totaly$Row.names
+Totaly$Row.names=NULL
+
+head(Totaly)
+```
+
+Variables en nuestra data final:
+```{r}
+names(Totaly)
+```
+
+Graficamos nuestros indices:
+```{r}
+plot(Totaly[c(16,15)])
+```
+
+Otro gráfico
+```{r}
+library(ggplot2)
+base=ggplot(Totaly,aes(x=IDHFA,y=IDEFA))
+base + geom_point() + geom_text(aes(label = row.names(Totaly)))
+```
+
+Nombres de los departamentos con mejores puntajes 
+```{r}
+base=ggplot(Totaly,aes(x=IDHFA,y=IDEFA))
+base + geom_point() + geom_text(aes(label = ifelse(IDHFA >0 & IDEFA >0,row.names(Totaly),"")))
+```
+
+Departamentos con mejores puntajes:
+```{r}
+base=ggplot(Totaly,aes(x=IDHFA,y=IDEFA))
+base + geom_point() + geom_text(aes(label = row.names(Totaly))) + xlim(0, 2) + ylim(0, 2)
+```
+
+Conclusiones: 
+
+1. Podemos indicar que tanto IDH e IDE son índices muy parecidos que, al combinar sus variables para realziar análisis factorial, es normal que tengan buena relación. 
+
+2. Asimismo, podemos ver que los mejores puntajes en general son departamentos de la costa como Lima, Tacna, Moquegua, Arequipa y Lambayeque.
+
+
+<a id='Similitudes'></a> 
+
+#### **6. Mapa de similitudes**
+
+En esta sección, nos enfocamos en observar las distancias entre los casos utilizando el mapa de similitudes. Asimismo, utilizamos como base las variables independientes de la presente investigación.
+
+```{r}
+Totaly_dy1=dist(Totaly[,-c(1:6,9:12,13,14)])
+```
+
+```{r}
+VarInd_map = cmdscale(Totaly_dy1, eig=TRUE, k=2)
+VarInd_map$GOF
+```
+
+Graficamos:
+```{r}
+titulo= "Mapa de similitudes entre departamentos"
+x = VarInd_map$points[,1]
+y = VarInd_map$points[,2]
+plot(x, y, xlab= "Dimension 1", ylab = "Dimension 2",  main=titulo, type = "n")
+text (x, y,  labels =rownames(VarInd_map$points), cex=0.5)
+
+```
+
+
+```{r}
+VarInd_map_DF = as.data.frame(VarInd_map$points)
+```
+
+```{r}
+library(ggrepel)
+base=ggplot(VarInd_map_DF,aes(x=V1,y=V2))
+base+geom_point() + geom_text_repel(aes(label=row.names(VarInd_map_DF)),size=2) #Para apreciar con mayor detalle la ubicacion de los departamentos
+```
+
+
+
+Conclusiones:
+
+1. A partir de las VIs, se ha creado el mapa de similitudes donde se puede apreciar que existen casos alejados del resto como Ancash y Cusco. Asimismo, se evidencian vecindarios como lo es el conformado por Madre de Dios, Ucayali, Tumbes y Tacna.
+
+
+2. En relación con los resultados, se denota que en cadavecindario formado no existe prevalencia de una región (costa, sierra y selva), por lo tanto, son muy variadas los vecindarios.
+
+
+<a id='Cluster'></a> 
+
+####**7. Analisis de Cluster o Componentes Principales**
+
+Realizaremos un análisis de cluster con el número de OxI y el monto de OxI con las VIs respectivamente, con el fin de identificar cuanto los factores presentados (VIs) determinan la relación público-privada a partir de las OxI a nivel departamental
+
+##### **Cluster de la VD: Número de OxI por departamento con las variables Independientes**
+
+Calculamos la distancia entre los grupos.
+```{r}
+Totaly_d1 =dist(Totaly[,-c(1:6,9:12,13)]) ## VD: NObras con VIs
+```
+
+```{r}
+Totaly_clus1=kmeans(Totaly_d1,centers = 4)
+```
+
+Le estamos pidiendo que genere 4 grupos. Los podemos ver:
+```{r}
+Totaly_clus1$cluster
+```
+
+Vemos cuantos casos tiene cada grupo
+```{r}
+table(Totaly_clus1$cluster)
+```
+
+
+##### **Cluster de la VD: Monto de OxI por departamento con las variables Independientes**
+
+```{r}
+Totaly_d2=dist(Totaly[,-c(1:6,9:12,14)]) ## VD: Monto con VIs
+```
+
+```{r}
+Totaly_clus2=kmeans(Totaly_d2,centers = 4)
+```
+
+Le estamos pidiendo que genere 4 grupos. Los podemos ver:
+```{r}
+Totaly_clus2$cluster
+```
+
+Vemos cuantos casos tiene cada grupo
+```{r}
+table(Totaly_clus2$cluster)
+```
+
+###### Ahora, Traemos un mapa:
+```{r}
+library(rgdal)
+folderMap='Departamentos'
+fileName='DEPARTAMENTO_16_03_2015.shp' 
+fileToRead=file.path(folderMap,fileName)
+
+library(rgdal)
+peruMap = readOGR(fileToRead,stringsAsFactors=FALSE)
+``` 
+
+Cmabiamos nombres para hacer el merge
+```{r}
+peruMap$Departamento = c("Amazonas","Ancash","Apurimac","Arequipa","Ayacucho","Cajamarca","Callao","Cusco","Huancavelica","Huanuco","Ica","Junin","La Libertad","Lambayeque","Lima","Loreto", "Madre de Dios","Moquegua","Pasco","Piura","Puno", "San Martin","Tacna","Tumbes","Ucayali")
+peruMap
+```
+
+##### **Mapa de la VD: Número de OxI por departamento con las variables Independientes**
+
+Guardamos la información de nuestros grupos:
+```{r}
+countryClus1=as.data.frame(Totaly_clus1$cluster)
+names(countryClus1)='cluster'
+countryClus1
+
+```
+
+```{r}
+countryClus1$Departamento=row.names(countryClus1)
+head(countryClus1)
+```
+
+Juntamos esta información con el mapa:
+```{r}
+peruMap_Totalyd1=merge(peruMap,countryClus1, by="Departamento")
+```
+
+
+Graficamos:
+
+```{r}
+library(leaflet)
+
+#newMaps!
+c1=peruMap_Totalyd1[!is.na(peruMap_Totalyd1$cluster) & peruMap_Totalyd1$cluster==1,]
+c2=peruMap_Totalyd1[!is.na(peruMap_Totalyd1$cluster) & peruMap_Totalyd1$cluster==2,]
+c3=peruMap_Totalyd1[!is.na(peruMap_Totalyd1$cluster) & peruMap_Totalyd1$cluster==3,]
+c4=peruMap_Totalyd1[!is.na(peruMap_Totalyd1$cluster) & peruMap_Totalyd1$cluster==4,]
+
+title="Clusters"
+
+# base Layer
+base= leaflet() %>% addProviderTiles("CartoDB.Positron") 
+
+layer11= base %>%
+        addPolygons(data=c1,color="red",fillOpacity = 1,stroke = F,
+                    group = "1")
+layer_112= layer1%>%addPolygons(data=c2,color="green",fillOpacity = 1,stroke = F,
+                              group = "2")
+
+layer_1123= layer_12%>%addPolygons(data=c3,color="blue",fillOpacity = 1,stroke = F,
+                              group = "3")
+
+layer_11234= layer_123%>%addPolygons(data=c4,color="purple",fillOpacity = 1,stroke = F,
+                              group = "4")
+
+layer_11234
+```
+
+###### Mapa con Leyenda
+```{r}
+layer_11234%>% addLayersControl(
+        overlayGroups = c("1", "2","3","4"),
+        options = layersControlOptions(collapsed = TRUE))
+```
+
+
+##### **Mapa de la VD: Monto de OxI por departamento con las variables Independientes**
+
+Guardamos la información de nuestros grupos:
+```{r}
+countryClus2=as.data.frame(Totaly_clus2$cluster)
+names(countryClus2)='cluster'
+countryClus2
+
+```
+
+```{r}
+countryClus2$Departamento=row.names(countryClus2)
+head(countryClus2)
+```
+
+Juntamos esta información con el mapa:
+```{r}
+peruMap_Totalyd2=merge(peruMap,countryClus2, by="Departamento")
+```
+
+Graficamos:
+
+```{r}
+library(leaflet)
+
+#newMaps!
+c1=peruMap_Totalyd2[!is.na(peruMap_Totalyd2$cluster) & peruMap_Totalyd2$cluster==1,]
+c2=peruMap_Totalyd2[!is.na(peruMap_Totalyd2$cluster) & peruMap_Totalyd2$cluster==2,]
+c3=peruMap_Totalyd2[!is.na(peruMap_Totalyd2$cluster) & peruMap_Totalyd2$cluster==3,]
+c4=peruMap_Totalyd2[!is.na(peruMap_Totalyd2$cluster) & peruMap_Totalyd2$cluster==4,]
+
+title="Clusters"
+
+# base Layer
+base= leaflet() %>% addProviderTiles("CartoDB.Positron") 
+
+layer21= base %>%
+        addPolygons(data=c1,color="red",fillOpacity = 1,stroke = F,
+                    group = "1")
+layer_212= layer1%>%addPolygons(data=c2,color="green",fillOpacity = 1,stroke = F,
+                              group = "2")
+
+layer_2123= layer_12%>%addPolygons(data=c3,color="blue",fillOpacity = 1,stroke = F,
+                              group = "3")
+
+layer_21234= layer_123%>%addPolygons(data=c4,color="purple",fillOpacity = 1,stroke = F,
+                              group = "4")
+
+layer_21234
+```
+
+###### Mapa con Leyenda
+```{r}
+layer_21234%>% addLayersControl(
+        overlayGroups = c("1", "2","3","4"),
+        options = layersControlOptions(collapsed = FALSE))
+```
+
+
+<a id='Regresion'></a> 
+
+#### **8. Analisis de regresion**
+
+En esta sección veremos los resultados de la técnica estadística escogida. Se usa regresión lineal para ambas Variables Dependientes, ya que tanto el Número de OxI por departamento y el Monto de OxI por departamento son numéricas.
+
+
+##### **8.1. Regresión lineal para la VD: Número de OxI y las variables independientes**
+
+```{r}
+Modelo_1= lm(NObras~IDEFA+IDHFA+NProcesados+NConflictos, data = Totaly)
+summary(Modelo_1)
+```
+
+a. Conclusiones de VD: Número de OxI por departamento:
+
+1. En el caso del Número de OxI por departamento, se observa que tanto el IDE y el Número de Conflictos son significativas en relación con el Número de OxI. Sin embargo, el IDH y Número de Autoridades Procesadas no son significativas. 
+
+¿Qué quiere decir esto? 
+
+- Significa que cuando empieza esta relación público-privada entre las empresas privadas y el Estado, se tiene en cuenta el Índice de Densidad del Estado, ya que se relaciona con la presencia estatal que debe estar presente en el departamento; y se tiene en cuenta el Número de Conflictos Sociales debido a que significa un gran riesgo para la empresa privada invertir en OxI en un lugar donde el Estado no resuelve los conflictos sociales o donde es más propenso que haya.
+
+- Por otro lado, cuando empieza esta relación público-privada entre las empresas privadas y el Estado, no se tiene muy en cuenta el IDH, ya que se refiere al desarrollo con o sin estado presente, por lo que las empresas no prestan mucha atención a este detalle (a diferencia del IDE); y el Número de autoridades procesadas por corrupción se tiene en cuenta pero no tanto, ya que sale 0.08 de p value, 0.03 más que lo necesario para ser significativo. Esto significa que la corrupción en relación con el Número de OxI en un departamento a veces es considerado.
+
+
+##### **8.2. Regresión lineal para la VD: Monto de OxI y las variables independientes**
+
+```{r}
+Modelo_2=lm(Monto~IDEFA+IDHFA+NProcesados+NConflictos, data = Totaly)
+summary(Modelo_2)
+```
+
+b. Conclusiones de VD: Monto de OxI por departamento:
+
+1. En el caso del Número de OxI por departamento, se observa que tanto el IDE y el Número de Conflictos son significativas en relación con el Monto de OxI. Sin embargo, el IDH y Número de Autoridades Procesadas no son significativas. 
+
+¿Qué quiere decir esto? 
+
+- Significa que cuando empieza esta relación público-privada entre las empresas privadas y el Estado, se tiene en cuenta el Índice de Densidad del Estado, ya que se relaciona con la presencia estatal que debe estar presente en el departamento y es en lo que se fija la empresa privada para invertir; y se tiene en cuenta el Número de Conflictos Sociales debido a que es un gran riesgo para la empresa privada y un gran riesgo para la relación público-privada, siendo esta variable independiente la más significativa en relación con el Monto de OxI.
+
+- Por otro lado, cuando empieza esta relación público-privada entre las empresas privadas y el Estado, en esta ocasión también el IDH no es indispensable para construir confianza entre el Estado y la empresa privada; y el Número de autoridades procesadas por corrupción no se tiene en cuenta al momento de construir confianza entre el Estado y la empresa privada.
+
+
+c. Conclusiones Finales:
+
+Conforme a las regresiones anteriores, se puede concluir que tanto para el número de OxI y el Monto de OxI es importante el IDE y el Número de conflictos sociales en un departamento, por ende, se interpreta que la confianza público-privada en relación con las Obras por Impuestos se construye en relación con el IDE y el número de conflictos. Por otro lado, el número de autoridades procesadas y el IDH no son tan importantes para construir confianza público-privada. Esto último es preocupante, ya que por lo menos en el caso de la corrupción, se ve reflejado que una empresa privada y el Estado pueden tener relación sin problemas, exceptuando irregularides que podría existir; es decir, podrían tener casos de corrupción ambos actores y la confianza seguiría igual.
+
+
+
+<a id='Requisitos'></a> 
+
+
+#### **9.Requisitos de la Regresion Lineal**
+
+Para cerciorarnos que la regresión lineal cumple con su función, es necesario ver los suspuestos del modelo de regresión lineal.
+
+
+##### **9.1. Diagnóstico de Regresión Lineal para la VD: Número de OxI y las variables independientes**
+
+##### Linealidad:
+Se asume relación lineal entre Y y Xs:
+```{r}
+# linea roja debe tender a horizontal
+plot(Modelo_1, 1)
+```
+Identificamos que se cumple debido a que se considera aceptable la línea roja..
+
+##### Homocedasticidad
+
+```{r}
+# linea roja debe tender a horizontal
+plot(Modelo_1, 3)
+```
+
+
+```{r}
+library(lmtest)
+# null: modelo homocedastico
+bptest(Modelo_1)
+```
+
+Debido a que el valor p está por encima de 0.05, esto significa que no existe heterocedasticidad; es decir, las varianzas de los errores es constante en todos los casos.
+
+##### Normalidad de los residuos
+```{r}
+# puntos cerca a la diagonal
+plot(Modelo_1, 2)
+```
+
+Se puede identificar que los errores del modelo tienen una distribución normal, debido a que la mayoría de casos se acercan a la diagonal, y no están muy lejos de ella. 
+
+
+```{r}
+shapiro.test(Modelo_1$residuals)
+```
+
+Debido a que el valor p está por encima del 0.05, significa que los datos poseen una distribución normal.
+
+
+###### No multicolinelidad
+
+```{r}
+library(DescTools)
+VIF(Modelo_1) # > 5 es problematico
+```
+
+No existe multicolinealidad debido a que los resultados no están por encima de 5, ya que los resultados se encuentran entre 1,2 y 1,5.
+
+
+##### Valores influyentes:
+
+```{r}
+plot(Modelo_1, 5)
+```
+No hay valores influyentes ya que no sobrepasan la distancia de Cook, por lo que no se distorsiona la correlación.
+
+
+##### **9.2. Diagnóstico de Regresión Lineal para la VD: Monto de OxI y las variables independientes**
+
+
+##### Linealidad:
+Se asume relación lineal entre Y y Xs:
+```{r}
+# linea roja debe tender a horizontal
+plot(Modelo_2, 1)
+```
+Identificamos que se cumple debido a que se considera aceptable la línea roja.
+
+
+##### Homocedasticidad
+
+```{r}
+# linea roja debe tender a horizontal
+plot(Modelo_2, 3)
+```
+
+
+```{r}
+library(lmtest)
+# null: modelo homocedastico
+bptest(Modelo_2)
+```
+Debido a que el valor p está por encima de 0.05, esto significa que no existe heterocedasticidad; es decir, las varianzas de los errores es constante en todos los casos.
+
+##### Normalidad de los residuos
+```{r}
+# puntos cerca a la diagonal
+plot(Modelo_2, 2)
+```
+Se puede identificar que los errores del modelo tienen una distribución normal, debido a que la mayoría de casos se acercan a la diagonal, y no están muy lejos de ella. 
+
+```{r}
+shapiro.test(Modelo_2$residuals)
+```
+Debido a que el valor p está por encima del 0.05, significa que los datos poseen una distribución normal.
+
+##### No multicolinelidad
+
+```{r}
+library(DescTools)
+VIF(Modelo_2) # > 5 es problematico
+```
+No existe multicolinealidad debido a que los resultados no están por encima de 5, ya que los resultados se encuentran entre 1,2 y 1,6.
+
+##### Valores influyentes:
+
+```{r}
+plot(Modelo_2, 5)
+```
+No hay valores influyentes ya que no sobrepasan la distancia de Cook, por lo que no se distorsiona la correlación.
+
+
+#### **Exportamos Base de Datos Final**
+
+```{r}
+library(xlsx)
+write.xlsx(Totaly,file = "DataFinal.xlsx")
+```
+
+
+
+
+
+
+
+
+
